@@ -42,9 +42,11 @@ def get_file(url, path):
 
 
 def main():
+    startline = 6
+    
     base_xb = openpyxl.load_workbook(filename='urls.xlsx')
     base_ws = base_xb['Лист1']
-    for nn, url, school_name in zip(list(base_ws['A'])[3:20], list(base_ws['D'])[3:20], list(base_ws['C'])[3:20]):
+    for nn, url, school_name in zip(list(base_ws['A'])[startline:20], list(base_ws['D'])[startline:20], list(base_ws['C'])[startline:20]):
         url = url.value.strip()
         school_name = '{} - {}'.format(nn.value, school_name.value.strip())
         print('\n\n>>>>> {} <<<<<'.format(url_pretty(url)))
@@ -55,23 +57,26 @@ def main():
         driver.set_page_load_timeout(5)
         try: # just in case of 404 or some random connection bullshit like RKN
             driver.get(url_pretty(url))
+            driver.implicitly_wait(3)
             school_path = get_path_for_school(school_name)
-            take_screenshot(driver, '{}/main_page.png'.format(school_path))
+            # take_screenshot(driver, '{}/main_page.png'.format(school_path))
 
             try:
-                try:
+                try: # жмём на Сведения об образовательной организации take 1
                     school_details_page = driver.find_element_by_xpath("//*[contains(text(), 'Сведения об')]")
                     school_details_page.click()
-                    time.sleep(2)
+                    print('Переход на Севедения об организации')
+                    driver.implicitly_wait(3)
                     take_screenshot(driver, '{}/сведения об.png'.format(school_path))
-                except WebDriverException:
+                except:
                     print('Кликнуть на "Сведения об" не получилось.')
 
-                try:
+                try: # жмём на кнопку Документы
                     documents_page = driver.find_element_by_xpath("//*[contains(text(), 'Документы')]")
                     documents_page.click()
-                    time.sleep(2)
-                except WebDriverException:
+                    print('Переход на Документы')
+                    driver.implicitly_wait(3)
+                except:
                     print('Кликнуть на "Документы" не получилось.')
 
                 try:
@@ -82,10 +87,11 @@ def main():
                         document_url = document.get_attribute('href')
                         document_file_path = '{}/documents/{}'.format(school_path, document_url.split('/')[-1])
                         get_file(document_url, document_file_path)
-                except WebDriverException:
+                        print('>>> Документ {} загружен.'.format(document_file_path))
+                except:
                     print('PDF найти не удалось')
 
-            except WebDriverException as e:
+            except Exception as e:
                 print(e)
 
 
