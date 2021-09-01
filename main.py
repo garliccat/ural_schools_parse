@@ -62,6 +62,11 @@ def document_path(school_path, document_name, extension=''):
         return '{}/documents/{}{}'.format(school_path, document_name, extension)
 
 
+def download_all_docs(driver, school_path):
+    extensions = ['.pdf', '.doc', '.xls']
+    return None
+
+
 def main():
     startline = 50 # base = 3
     
