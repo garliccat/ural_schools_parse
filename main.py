@@ -37,8 +37,8 @@ def url_pretty(school_url):
         return 'http://{}'.format(school_url)
 
 
-def get_file(school_url, path):
-    data = requests.get(school_url).content
+def get_file(url, path):
+    data = requests.get(url).content
     with open(path, 'wb') as handler:
         handler.write(data)
     pass
@@ -53,40 +53,40 @@ def download_docs(driver: webdriver, # selenuim webdriver
     '''
 
     forbidden = ['<', '>', ':', '"', '\\', '|', '?', '*', ';', '/']
+    if not os.path.exists('{}/documents'.format(destination_path)):
+        os.makedirs('{}/documents'.format(destination_path))
     for extension in extensions:
         try:
             documents = driver.find_elements_by_xpath("//a[contains(@href, '{}')]".format(extension))
-            if not os.path.exists('{}/documents'.format(destination_path)):
-                os.makedirs('{}/documents'.format(destination_path))
-                for document in documents:
-                    document_url = document.get_attribute('href')
-                    # print('Current url: {}'.format(driver.current_url))
-                    # print('Document url: {}'.format(document_url))
-                    document_name = document.text[:200]
-                    document_name = ''.join([i for i in document_name if i not in forbidden])
-                    exist_documents = glob.glob('{}/documents/{}*{}'.format(destination_path, document_name, extension))
-                    if exist_documents:
-                        if len(exist_documents) == 1:
-                            path = '{}/documents/{}_1{}'.format(destination_path, document_name, extension)
-                        else:
-                            num_docs = glob.glob('{}/documents/{}_*'.format(destination_path, document_name))
-                            numbers = [int(i.split('_')[-1].split('.')[0]) for i in num_docs]
-                            path = '{}/documents/{}_{}{}'.format(destination_path, document_name, str(max(numbers) + 1), extension)
+            print('{} DOCUMENTS FOUND ON PAGE: {}'.format(extension, len(documents)))
+            for document in documents:
+                document_url = document.get_attribute('href')
+                # print('\nCurrent url: {}\n'.format(driver.current_url))
+                # print('Document url: {}'.format(document_url))
+                document_name = document.text[:200]
+                document_name = ''.join([i for i in document_name if i not in forbidden])
+                exist_documents = glob.glob('{}/documents/{}*{}'.format(destination_path, document_name, extension))
+                if exist_documents:
+                    if len(exist_documents) == 1:
+                        path = '{}/documents/{}_1{}'.format(destination_path, document_name, extension)
                     else:
-                        path = '{}/documents/{}{}'.format(destination_path, document_name, extension)
-                    
-                    try: # downloading the document
-                        data = requests.get(document_url, allow_redirects=True, timeout=(2, 3)).content
-                        with open(path, 'wb') as handler:
-                            handler.write(data)
-                    except:
-                        print('>>> Document {} is too slow for download, skipped <<<'.format(document_name))
-                        continue
+                        num_docs = glob.glob('{}/documents/{}_*'.format(destination_path, document_name))
+                        numbers = [int(i.split('_')[-1].split('.')[0]) for i in num_docs]
+                        path = '{}/documents/{}_{}{}'.format(destination_path, document_name, str(max(numbers) + 1), extension)
+                else:
+                    path = '{}/documents/{}{}'.format(destination_path, document_name, extension)
+                
+                try: # downloading the document
+                    data = requests.get(document_url, allow_redirects=True, timeout=(2, 3)).content
+                    with open(path, 'wb') as handler:
+                        handler.write(data)
+                except:
+                    print('>>> Document {} is too slow for download, skipped <<<'.format(document_name))
+                    continue
 
-                    print('>>> Document {} downloaded <<<'.format(document_name))
+                print('>>> Document {} downloaded <<<'.format(document_name))
         except Exception as e:
             print(e)
-    return None
 
 
 def main():
@@ -125,15 +125,15 @@ def main():
 
             try: # jerking the categories
                 sub_categories = [
+                    'Платные образовательные',
                     'Документы',
                     'Основные сведения',
+                    'Образовательные стандарты',
                     'Структура и органы управления', 
                     'Образование',
-                    'Образовательные стандарты',
                     'Руководство. Педагог',
                     'Материально-техническое',
                     'Стипендии и меры',
-                    'Платные образовательные',
                     'Финансово-хозяйственная',
                     'Вакантные места',
                     'Доступная среда',
@@ -162,10 +162,10 @@ def main():
                         print('Переход на {}'.format(sub_category))
                         time.sleep(2)
                         take_screenshot(driver, '{}/{}.png'.format(school_path, sub_category))
+                        download_docs(driver, school_path) # downloading all the documents out of the current page
                     except: 
                         print('Кликнуть на "{}" не получилось.'.format(sub_category))
                     
-                    download_docs(driver, school_path) # downloading all the documents out of the current page
                     driver.get(school_url) # getting back to main page
 
             except Exception as e:
