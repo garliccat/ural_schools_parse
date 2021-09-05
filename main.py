@@ -90,7 +90,7 @@ def download_docs(driver: webdriver, # selenuim webdriver
 
 
 def main():
-    startline = 266 # base = 3
+    startline = 3 # base = 3
     driver_options = webdriver.ChromeOptions()
     driver_options.headless = True
     driver_options.add_argument("--no-sandbox")
@@ -103,12 +103,19 @@ def main():
     
     base_xb = openpyxl.load_workbook(filename='urls.xlsx')
     base_ws = base_xb['Лист1']
-    for nn, school_url, school_name in zip(list(base_ws['A'])[startline:startline + 20], 
-                                    list(base_ws['D'])[startline:startline + 20], 
-                                    list(base_ws['C'])[startline:startline + 20]):
+    overallnumber = len(list(base_ws['A'])[startline:])
+    for nn, inn, school_url, school_name in zip(list(base_ws['A'])[startline:],
+                                    list(base_ws['B'])[startline:],
+                                    list(base_ws['D'])[startline:], 
+                                    list(base_ws['C'])[startline:]):
+        if school_url.value.split('/')[-1] == '':
+            school_url_for_name = school_url.value.split('/')[-2]
+        else:
+            school_url_for_name = school_url.value.split('/')[-1]
+        school_name = '{}_{}_{}'.format(str(inn.value), school_url_for_name, school_name.value.strip())
         school_url = url_pretty(school_url.value.strip())
-        school_name = '{} - {}'.format(nn.value, school_name.value.strip())
         print('\n\n>>>>> {} <<<<<'.format(school_url))
+        print('>>> COUNTER {} of {}'.format(nn.value, overallnumber))
         try: # just in case of 404 or some random connection bullshit like RKN
             driver.get(school_url)
             # time.sleep(5)
@@ -121,7 +128,7 @@ def main():
                 time.sleep(2)
             except:
                 pass
-            take_screenshot(driver, '{}/main_page.png'.format(school_path)) # screenshot of the main page
+            take_screenshot(driver, '{}/main_page.jpg'.format(school_path)) # screenshot of the main page
 
             try: # jerking the categories
                 sub_categories = [
@@ -139,7 +146,9 @@ def main():
                     'Доступная среда',
                     'Международное',
                     'Специальные сведения',
-                    'Дополнительные сведения'
+                    'Дополнительные сведения',
+                    'Сведения об ОО',
+                    'Сведения ОО'
                     ]
                 svedeniya_screen_took = False
                 for sub_category in sub_categories:
@@ -150,7 +159,7 @@ def main():
                         print('Переход на Севедения об организации')
                         # time.sleep(5)
                         if not svedeniya_screen_took:
-                            take_screenshot(driver, '{}/сведения об.png'.format(school_path))
+                            take_screenshot(driver, '{}/сведения об.jpg'.format(school_path))
                             svedeniya_screen_took = True
                     except:
                         print('Кликнуть на "Сведения об" не получилось.')
@@ -161,7 +170,7 @@ def main():
                         documents_page.click()
                         print('Переход на {}'.format(sub_category))
                         time.sleep(2)
-                        take_screenshot(driver, '{}/{}.png'.format(school_path, sub_category))
+                        take_screenshot(driver, '{}/{}.jpg'.format(school_path, sub_category))
                         download_docs(driver, school_path) # downloading all the documents out of the current page
                     except: 
                         print('Кликнуть на "{}" не получилось.'.format(sub_category))
