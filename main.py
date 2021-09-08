@@ -77,7 +77,7 @@ def download_docs(driver: webdriver, # selenuim webdriver
                     path = '{}/documents/{}{}'.format(destination_path, document_name, extension)
                 
                 try: # downloading the document
-                    data = requests.get(document_url, allow_redirects=True, timeout=(2, 3)).content
+                    data = requests.get(document_url, allow_redirects=True, timeout=(5)).content
                     with open(path, 'wb') as handler:
                         handler.write(data)
                 except:
