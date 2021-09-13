@@ -18,10 +18,6 @@ for root, dirs, files in os.walk('origins'):
     if regex.search(root) and len(files) == 1:
         only_one_screen.append(regex.search(root)[0])
 
-# print('Empty schools: ', len(empty_school))
-# print('Empty origins: ', len(empty_origins))
-# print('No docs: ', len(no_docs_inn))
-# print('Only one screen: ', len(only_one_screen))
 
 df = pd.read_excel('urls_2.xlsx', skiprows=3)
 df.columns = ['n', 'origin', 'inn', 'name', 'url']
