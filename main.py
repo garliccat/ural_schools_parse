@@ -20,7 +20,7 @@ def get_path_for_school(school_name):
             return path
         else:
             num_school_folders = glob.glob('output/{}_*'.format(school_name))
-            numbers = [int(i.split('_')[1]) for i in num_school_folders]
+            numbers = [int(i.split('_')[-1]) for i in num_school_folders]
             path = 'output/{}_{}'.format(school_name, str(max(numbers) + 1))
             os.makedirs(path)
             return path
@@ -48,7 +48,7 @@ def download_docs(driver: webdriver, # selenuim webdriver
                     destination_path: str = '', # string of path where the dir 'documents' will be created for documents
                     extensions: list = ['.pdf', '.doc', '.xls', '.jpg']): # optional extensions to look for
     '''
-    searches for links of documents within provided list of extensions (default list included) and downloads all of them
+    searches for links of documents within provided list of extensions (default list included) and downloads all of them. sorta
     requires: Selenuim WebDriver, requests, glob, os
     '''
 
@@ -96,7 +96,7 @@ def main():
     driver_options.add_argument("--no-sandbox")
     driver_options.add_argument("--disable-gpu")
     driver_options.add_argument("--disable-gpu-sandbox")
-    driver_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    driver_options.add_experimental_option("excludeSwitches", ["enable-automation"]) # only for Chrome driver
     driver = webdriver.Chrome(options=driver_options)
     driver.set_window_size(1920, 1080)
     driver.set_page_load_timeout(5)
@@ -152,7 +152,7 @@ def main():
                     ]
                 svedeniya_screen_took = False
                 for sub_category in sub_categories:
-                    try: # жмём на Сведения об образовательной организации take 1
+                    try: # click on Сведения об образовательной организации take 1
                         school_details_page = driver.find_element_by_partial_link_text('Сведения об')
                         # school_details_page = driver.find_elements_by_xpath("//*[contains(text(), 'Сведения об')]")
                         school_details_page.click()
