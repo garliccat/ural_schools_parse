@@ -30,38 +30,11 @@ def take_screenshot(driver, save_path, ratio = None):
     rgb_im.save(save_path)
 
 
-
-def get_path_for_school(school_name):
-    school_folders = glob.glob('output/{}*'.format(school_name))
-    if school_folders:
-        if len(school_folders) == 1:
-            path = 'output/{}_1'.format(school_name)
-            os.makedirs(path)
-            return path
-        else:
-            num_school_folders = glob.glob('output/{}_*'.format(school_name))
-            numbers = [int(i.split('_')[1]) for i in num_school_folders]
-            path = 'output/{}_{}'.format(school_name, str(max(numbers) + 1))
-            os.makedirs(path)
-            return path
-    else:
-        path = 'output/{}'.format(school_name)
-        os.makedirs(path)
-        return path
-
-
 def url_pretty(school_url):
     if school_url[:4] == 'http':
         return school_url
     else:
         return 'http://{}'.format(school_url)
-
-
-def get_file(url, path):
-    data = requests.get(url).content
-    with open(path, 'wb') as handler:
-        handler.write(data)
-    pass
 
 
 def download_docs(driver: webdriver, # selenuim webdriver
@@ -75,9 +48,9 @@ def download_docs(driver: webdriver, # selenuim webdriver
     requires: Selenuim WebDriver, requests, glob, os
     '''
 
-    forbidden = ['<', '>', ':', '"', '\\', '|', '?', '*', ';', '/']
-    if not os.path.exists('{}/documents'.format(destination_path)):
-        os.makedirs('{}/documents'.format(destination_path))
+    forbidden = ['<', '>', ':', '"', '\\', '|', '?', '*', ';', '/'] # excluding the forbidden symbols for the files pathes
+    if not os.path.exists(f'{destination_path}/documents'):
+        os.makedirs(f'{destination_path}/documents')
     for extension in extensions:
         try:
             documents = driver.find_elements_by_xpath("//a[contains(@href, '{}')]".format(extension))
@@ -100,9 +73,9 @@ def download_docs(driver: webdriver, # selenuim webdriver
                 else:
                     pass
 
-                path = '{}/documents/{}{}'.format(destination_path, document_name, extension)
+                path = f'{destination_path}/documents/{document_name}{extension}'
 
-                if 'edusite' in document_url:
+                if 'edusite' in document_url: # for edusite hosting, to avoid clickwall
                     headers = {'origin': 'https://cp.edusite.ru', 'referer': 'https://cp.edusite.ru/'}
                 else:
                     headers = None
@@ -128,15 +101,19 @@ def download_docs(driver: webdriver, # selenuim webdriver
 def main():
     startline = 3 # base = 3
     forbidden = ['<', '>', ':', '"', '\\', '|', '?', '*', ';', '/']
+
     # driver_options = webdriver.FirefoxOptions()
     driver_options = webdriver.ChromeOptions()
+
     driver_options.headless = True
     driver_options.add_argument("--no-sandbox")
     driver_options.add_argument("--disable-gpu")
     driver_options.add_argument("--disable-gpu-sandbox")
     driver_options.add_experimental_option("excludeSwitches", ["enable-automation"]) # Chrome only !
+    
     # driver = webdriver.Firefox(options=driver_options)
     driver = webdriver.Chrome(options=driver_options)
+
     driver.set_window_size(1920, 1080)
     driver.set_page_load_timeout(5)
     
@@ -150,7 +127,7 @@ def main():
                                     list(base_ws['E'])[startline:],
                                     list(base_ws['F'])[startline:]
                                     ):
-        if flag.value == 1:
+        if flag.value == 1: # using flag to process selected schools, in case of some distinct problems
             ### cleaning the variables
             if school_url.value.split('/')[-1] == '':
                 school_url_for_name = school_url.value.split('/')[-2]
@@ -167,7 +144,7 @@ def main():
 
             school_url = url_pretty(school_url.value.strip())
             
-            print('\n\n>>>>> {}  ---  {} <<<<<'.format(county, school_url))
+            print(f'\n\n>>>>> {county}  ---  {school_url} <<<<<')
 
 
             ### checking and creating the paths for school

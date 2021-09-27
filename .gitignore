@@ -1,4 +1,6 @@
-origins/
+counties/
 venv/
 output/
 ~$*
+geckodriver.log
+*.xlsx
