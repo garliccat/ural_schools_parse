@@ -119,6 +119,10 @@ def main():
     
     base_xb = openpyxl.load_workbook(filename='urls.xlsx')
     base_ws = base_xb['Лист1']
+
+    with open('categories.txt', 'r', encoding='utf-8') as f: # loading the categories list from file
+        sub_categories = f.read().split('\n')
+
     for nn, county, inn, school_name, school_url, flag in zip(
                                     list(base_ws['A'])[startline:],
                                     list(base_ws['B'])[startline:],
@@ -163,83 +167,57 @@ def main():
             if len(os.listdir(school_path)) == 0:
                 try: # just in case of 404 or some random connection bullshit like RKN
                     driver.get(school_url)
-
-                    try: # in case of Внимание, перейти ли в раздел домашнего обучения?
-                        annoying_shit = driver.find_element_by_xpath('//button[text()="Нет, позже"]')
-                        annoying_shit.click()
-                        print('Banner with remote education closed.')
-                        time.sleep(2)
-                    except:
-                        pass
-
-                    take_screenshot(driver, '{}/main_page.jpg'.format(school_path), ratio=3) # screenshot of the main page
-
-                    try: # jerking the categories
-                        sub_categories = [
-                            'Платные образовательные', 'ПЛАТНЫЕ ОБРАЗОВАТЕЛЬНЫЕ',
-                            'Документы', 'ДОКУМЕНТЫ',
-                            'Основные сведения', 'ОСНОВНЫЕ СВЕДЕНИЯ',
-                            'Образовательные стандарты', 'ОБРАЗОВАТЕЛЬНЫЕ СТАНДАРТЫ',
-                            'Структура и органы управления', 'СТРУКТУРА И ОРГАНЫ УАПРАВЛЕНИЯ',
-                            'Образование', 'ОБРАЗОВАНИЕ',
-                            'Руководство. Педагог', 'РУКОВОДСТВО. ПЕДАГОГ',
-                            'Материально-техническое', 'МАТЕРИАЛЬНО-ТЕХНИЧЕСКОЕ',
-                            'Стипендии и меры', 'СТИПЕНДИИ И МЕРЫ',
-                            'Финансово-хозяйственная', 'ФИНАНСОВО-ХОЗЯЙСТВЕННАЯ',
-                            'Вакантные места', 'ВАКАНТНЫЕ МЕСТА',
-                            'Доступная среда', 'ДОСТУПНАЯ СРЕДА',
-                            'Международное', 'МЕЖДУНАРОДНОЕ',
-                            'Специальные сведения', 'СПЕЦИАЛЬНЫЕ СВЕДЕНИЯ',
-                            'Дополнительные сведения', 'ДОПОЛНИТЕЛЬНЫЕ СВЕДЕНИЯ',
-                            'Сведения об ОО', 'СВЕДЕНИЯ ОБ ОО',
-                            'Сведения ОО', 'СВЕДЕНИЯ ОО'
-                            ]
-                        
-                        try: # жмём на Сведения об образовательной организации take 1
-                            school_details_page = driver.find_element_by_partial_link_text('Сведения об')
-                            # school_details_page = driver.find_element_by_xpath("//*[contains(translate(., 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ', 'абвгдеёжзийклмнопрстуфхцчшщъыьэюя'), 'сведения об')]")
-                            school_details_page.click()
-                            print('Переход на Севедения об организации')
-                            take_screenshot(driver, f'{school_path}/сведения об организации.jpg', ratio=3)
-                        except:
-                            try:
-                                school_details_page = driver.find_element_by_partial_link_text('СВЕДЕНИЯ ОБ')
-                                school_details_page.click()
-                                print('Переход на Севедения об организации')
-                                take_screenshot(driver, f'{school_path}/сведения об организации.jpg', ratio=3)
-                            except:
-                                print('Кликнуть на "Сведения об" не получилось.')
-
-                        finally:
-                            cats_urls = {}
-                            for sub_category in sub_categories:
-                                try:
-                                    link = driver.find_element_by_partial_link_text(sub_category).get_attribute('href')
-                                    cats_urls[sub_category] = link
-                                except Exception as e:
-                                    print(e)
-
-                        for sub_category, sub_url in cats_urls.items():
-                            try: # trying to push the button of the current category
-                                driver.get(sub_url)
-                                print(f'Переход на {sub_category}')
-                                time.sleep(2)
-                                take_screenshot(driver, f'{school_path}/{sub_category}.jpg', ratio=3)
-                                download_docs(driver, school_path, root_url=school_url) # downloading all the documents out of the current page
-                            except Exception as e: 
-                                print(f'{e} occured, cant go to {sub_category}')
-                            
-                            time.sleep(2)
-
-                    except Exception as e:
-                        print(e)
-
                 except Exception as e:
-                    print(e)
-                    print("Couldn't reach {}, somehow.".format(school_url))
+                    print(f"!!!!! Couldn't reach {school_url} , {e} happened, skipping")
+                    continue
+
+                try: # in case of Внимание, перейти ли в раздел домашнего обучения?
+                    annoying_shit = driver.find_element_by_xpath('//button[text()="Нет, позже"]')
+                    annoying_shit.click()
+                    print('Banner with remote education closed.')
+                    time.sleep(2)
+                except:
+                    pass
+
+                take_screenshot(driver, '{}/main_page.jpg'.format(school_path), ratio=3) # screenshot of the main page
+
+                try: # жмём на Сведения об образовательной организации
+                    school_details_page = driver.find_element_by_partial_link_text('Сведения об')
+                    # school_details_page = driver.find_element_by_xpath("//*[contains(translate(., 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ', 'абвгдеёжзийклмнопрстуфхцчшщъыьэюя'), 'сведения об')]")
+                    school_details_page.click()
+                    print('Переход на Севедения об организации')
+                    take_screenshot(driver, f'{school_path}/сведения об организации.jpg', ratio=3)
+                except:
+                    try:
+                        school_details_page = driver.find_element_by_partial_link_text('СВЕДЕНИЯ ОБ')
+                        school_details_page.click()
+                        print('Переход на Севедения об организации')
+                        take_screenshot(driver, f'{school_path}/сведения об организации.jpg', ratio=3)
+                    except:
+                        print('Кликнуть на "Сведения об" не получилось.')
+
+                finally:
+                    cats_urls = {}
+                    for sub_category in sub_categories:
+                        try:
+                            link = driver.find_element_by_partial_link_text(sub_category).get_attribute('href')
+                            cats_urls[sub_category] = link
+                        except Exception as e:
+                            print(e)
+
+                for sub_category, sub_url in cats_urls.items():
+                    try: # trying to push the button of the current category
+                        driver.get(sub_url)
+                        print(f'Переход на {sub_category}')
+                        time.sleep(2)
+                        take_screenshot(driver, f'{school_path}/{sub_category}.jpg', ratio=3)
+                        download_docs(driver, school_path, root_url=school_url) # downloading all the documents out of the current page
+                    except Exception as e: 
+                        print(f'{e} occured, cant go to {sub_category}')
+                    
+                    time.sleep(2)
 
     driver.quit()
-
 
 if __name__ == '__main__':
     main()
