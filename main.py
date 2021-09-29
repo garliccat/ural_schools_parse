@@ -37,6 +37,17 @@ def url_pretty(school_url):
     else:
         return 'http://{}'.format(school_url)
 
+def clear_folder(path):
+    for filename in os.listdir(path):
+        file_path = os.path.join(path, filename)
+        try:
+            if os.path.isfile(file_path):
+                os.remove(file_path)
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)
+        except Exception as e:
+            print(f'Failed to delete {file_path}. Reason: {e}')
+
 
 def download_docs(driver: webdriver, # selenuim webdriver
                     destination_path: str = '', # string of path where the dir 'documents' will be created for documents
@@ -164,28 +175,24 @@ def main():
         school_path = os.path.join('counties', county, school_name)
 
         # checking the options for the school
-        if len(os.listdir(school_path)) <= options.min_docs_for_reload:
+        if len(os.listdir(school_path)) == 0:
+            pass
+        elif len(os.listdir(school_path)) <= options.min_docs_for_reload:
             print(f'\n======= Folder is filled less then required, reloading: {county} - {school_name} ========\n')
+            clear_folder(school_path)
         elif options.reload_on_empty_docs:
             if os.path.exists(os.path.join(school_path, 'documents')):
                 if os.listdir(os.path.join(school_path, 'documents')) == []:
                     print(f'\n======= Lack of documents, reloading: {county} - {school_name} ========\n')
+                    clear_folder(school_path)
                 else:
                     continue
+            else:
+                print(f'\n======= Lack of documents folder, reloading: {county} - {school_name} ========\n')
+                clear_folder(school_path)
         else:
             continue
         
-        # cleaning the school folder
-        for filename in os.listdir(school_path):
-            file_path = os.path.join(school_path, filename)
-            try:
-                if os.path.isfile(file_path):
-                    os.remove(file_path)
-                elif os.path.isdir(file_path):
-                    shutil.rmtree(file_path)
-            except Exception as e:
-                print(f'Failed to delete {file_path}. Reason: {e}')
-
         # working with the school
         try: # just in case of 404 or some random connection bullshit like RKN
             driver.get(school_url)
