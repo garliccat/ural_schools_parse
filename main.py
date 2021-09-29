@@ -1,8 +1,9 @@
 from selenium import webdriver
-import time, os, glob, re
+import time, os, shutil, re
 import openpyxl
 import requests
 from PIL import Image
+import options
 
 
 def take_screenshot(driver, save_path, ratio = None):
@@ -132,90 +133,111 @@ def main():
                                     list(base_ws['F'])[startline:]
                                     ):
         if flag.value == 1: # using flag to process selected schools, in case of some distinct problems
-            ### cleaning the variables
-            if school_url.value.split('/')[-1] == '':
-                school_url_for_name = school_url.value.split('/')[-2]
-            else:
-                school_url_for_name = school_url.value.split('/')[-1]
-            school_url_for_name = ''.join([i for i in school_url_for_name if i not in forbidden])
-            
-            county = ''.join([i for i in county.value.strip() if i not in forbidden])
+            pass
+        else:
+            continue
+        
+        ### cleaning the variables
+        if school_url.value.split('/')[-1] == '':
+            school_url_for_name = school_url.value.split('/')[-2]
+        else:
+            school_url_for_name = school_url.value.split('/')[-1]
+        school_url_for_name = ''.join([i for i in school_url_for_name if i not in forbidden])
+        
+        county = ''.join([i for i in county.value.strip() if i not in forbidden])
 
-            inn = inn.value
+        inn = inn.value
 
-            school_name = ''.join([i for i in school_name.value.strip() if i not in forbidden])
-            school_name = '{}_{}_{}'.format(str(inn), school_url_for_name, school_name)
-
-            school_url = url_pretty(school_url.value.strip())
-            
-            print(f'\n\n>>>>> {county}  ---  {school_url} <<<<<')
+        school_name = ''.join([i for i in school_name.value.strip() if i not in forbidden])
+        school_name = '{}_{}_{}'.format(str(inn), school_url_for_name, school_name)
+        school_url = url_pretty(school_url.value.strip())
+        print(f'\n\n>>>>> {county}  ---  {school_url} <<<<<')
 
 
-            ### checking and creating the paths for school
-            if not os.path.exists('counties'):
-                os.mkdir('counties')
-            if not os.path.exists(os.path.join('counties', county)):
-                os.mkdir(os.path.join('counties', county))
-            if not os.path.exists(os.path.join('counties', county, school_name)):
-                os.mkdir(os.path.join('counties', county, school_name))
+        ### checking and creating the paths for school
+        if not os.path.exists('counties'):
+            os.mkdir('counties')
+        if not os.path.exists(os.path.join('counties', county)):
+            os.mkdir(os.path.join('counties', county))
+        if not os.path.exists(os.path.join('counties', county, school_name)):
+            os.mkdir(os.path.join('counties', county, school_name))
+        school_path = os.path.join('counties', county, school_name)
 
-            school_path = os.path.join('counties', county, school_name)
-            
-            if len(os.listdir(school_path)) <= 5:
-                print(f'\n======= ALMOST EMPTY SCHOOL! {county} - {school_name} ========\n')
-
-            if len(os.listdir(school_path)) == 0:
-                try: # just in case of 404 or some random connection bullshit like RKN
-                    driver.get(school_url)
-                except Exception as e:
-                    print(f"!!!!! Couldn't reach {school_url} , {e} happened, skipping")
+        # checking the options for the school
+        if len(os.listdir(school_path)) <= options.min_docs_for_reload:
+            print(f'\n======= Folder is filled less then required, reloading: {county} - {school_name} ========\n')
+        elif options.reload_on_empty_docs:
+            if os.path.exists(os.path.join(school_path, 'documents')):
+                if os.listdir(os.path.join(school_path, 'documents')) == []:
+                    print(f'\n======= Lack of documents, reloading: {county} - {school_name} ========\n')
+                else:
                     continue
+        else:
+            continue
+        
+        # cleaning the school folder
+        for filename in os.listdir(school_path):
+            file_path = os.path.join(school_path, filename)
+            try:
+                if os.path.isfile(file_path):
+                    os.remove(file_path)
+                elif os.path.isdir(file_path):
+                    shutil.rmtree(file_path)
+            except Exception as e:
+                print(f'Failed to delete {file_path}. Reason: {e}')
 
-                try: # in case of Внимание, перейти ли в раздел домашнего обучения?
-                    annoying_shit = driver.find_element_by_xpath('//button[text()="Нет, позже"]')
-                    annoying_shit.click()
-                    print('Banner with remote education closed.')
-                    time.sleep(2)
-                except:
-                    pass
+        # working with the school
+        try: # just in case of 404 or some random connection bullshit like RKN
+            driver.get(school_url)
+        except Exception as e:
+            print(f"!!!!! Couldn't reach {school_url} , {e} happened, skipping")
+            continue
 
-                take_screenshot(driver, '{}/main_page.jpg'.format(school_path), ratio=3) # screenshot of the main page
+        try: # in case of Внимание, перейти ли в раздел домашнего обучения?
+            annoying_shit = driver.find_element_by_xpath('//button[text()="Нет, позже"]')
+            annoying_shit.click()
+            print('Banner with remote education closed.')
+            time.sleep(2)
+        except:
+            pass
 
-                try: # жмём на Сведения об образовательной организации
-                    school_details_page = driver.find_element_by_partial_link_text('Сведения об')
-                    # school_details_page = driver.find_element_by_xpath("//*[contains(translate(., 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ', 'абвгдеёжзийклмнопрстуфхцчшщъыьэюя'), 'сведения об')]")
-                    school_details_page.click()
-                    print('Переход на Севедения об организации')
-                    take_screenshot(driver, f'{school_path}/сведения об организации.jpg', ratio=3)
-                except:
-                    try:
-                        school_details_page = driver.find_element_by_partial_link_text('СВЕДЕНИЯ ОБ')
-                        school_details_page.click()
-                        print('Переход на Севедения об организации')
-                        take_screenshot(driver, f'{school_path}/сведения об организации.jpg', ratio=3)
-                    except:
-                        print('Кликнуть на "Сведения об" не получилось.')
+        take_screenshot(driver, f'{school_path}/main_page.jpg', ratio=3) # screenshot of the main page
 
-                finally:
-                    cats_urls = {}
-                    for sub_category in sub_categories:
-                        try:
-                            link = driver.find_element_by_partial_link_text(sub_category).get_attribute('href')
-                            cats_urls[sub_category] = link
-                        except Exception as e:
-                            print(e)
+        try: # жмём на Сведения об образовательной организации
+            school_details_page = driver.find_element_by_partial_link_text('Сведения об')
+            # school_details_page = driver.find_element_by_xpath("//*[contains(translate(., 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ', 'абвгдеёжзийклмнопрстуфхцчшщъыьэюя'), 'сведения об')]")
+            school_details_page.click()
+            print('Переход на Севедения об организации')
+            take_screenshot(driver, f'{school_path}/сведения об организации.jpg', ratio=3)
+        except:
+            try:
+                school_details_page = driver.find_element_by_partial_link_text('СВЕДЕНИЯ ОБ')
+                school_details_page.click()
+                print('Переход на Севедения об организации')
+                take_screenshot(driver, f'{school_path}/сведения об организации.jpg', ratio=3)
+            except:
+                print('Кликнуть на "Сведения об" не получилось.')
 
-                for sub_category, sub_url in cats_urls.items():
-                    try: # trying to push the button of the current category
-                        driver.get(sub_url)
-                        print(f'Переход на {sub_category}')
-                        time.sleep(2)
-                        take_screenshot(driver, f'{school_path}/{sub_category}.jpg', ratio=3)
-                        download_docs(driver, school_path, root_url=school_url) # downloading all the documents out of the current page
-                    except Exception as e: 
-                        print(f'{e} occured, cant go to {sub_category}')
-                    
-                    time.sleep(2)
+        finally:
+            cats_urls = {}
+            for sub_category in sub_categories:
+                try:
+                    link = driver.find_element_by_partial_link_text(sub_category).get_attribute('href')
+                    cats_urls[sub_category] = link
+                except Exception as e:
+                    print(e)
+
+        for sub_category, sub_url in cats_urls.items():
+            try: # trying to push the button of the current category
+                driver.get(sub_url)
+                print(f'Переход на {sub_category}')
+                time.sleep(2)
+                take_screenshot(driver, f'{school_path}/{sub_category}.jpg', ratio=3)
+                download_docs(driver, school_path, root_url=school_url) # downloading all the documents out of the current page
+            except Exception as e: 
+                print(f'{e} occured, cant go to {sub_category}')
+            
+            time.sleep(2)
 
     driver.quit()
 

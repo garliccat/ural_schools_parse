@@ -4,3 +4,4 @@ output/
 ~$*
 geckodriver.log
 *.xlsx
+__pycache__
