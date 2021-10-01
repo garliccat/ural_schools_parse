@@ -10,7 +10,11 @@ def take_screenshot(driver, save_path, ratio = None):
     # first type
     S = lambda X: driver.execute_script('return document.body.parentNode.scroll' + X)
     driver.set_window_size(S('Width'),S('Height'))
-    driver.find_element_by_tag_name('body').screenshot(save_path)
+    try:
+        driver.find_element_by_tag_name('body').screenshot(save_path)
+    except Exception as e:
+        print(f"Couldn't take screenshot, {e} occured")
+        return None
     # second type
     # max_window_height = driver.execute_script('return Math.max('
     #                                           'document.body.scrollHeight, '
@@ -97,7 +101,8 @@ def download_docs(driver: webdriver, # selenuim webdriver
                                         allow_redirects=True, 
                                         verify=False,
                                         cookies=cookies,
-                                        headers=headers
+                                        headers=headers,
+                                        timeout=5
                                         ).content
                     with open(path, 'wb') as handler:
                         handler.write(data)
