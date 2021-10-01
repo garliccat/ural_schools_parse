@@ -4,6 +4,7 @@ import openpyxl
 import requests
 from PIL import Image
 import options
+import logging
 
 
 def take_screenshot(driver, save_path, ratio = None):
@@ -13,7 +14,8 @@ def take_screenshot(driver, save_path, ratio = None):
     try:
         driver.find_element_by_tag_name('body').screenshot(save_path)
     except Exception as e:
-        print(f"Couldn't take screenshot, {e} occured")
+        # print(f"Couldn't take screenshot, {e} occured")
+        logging.warning(f"Couldn't take screenshot, {e} occured")
         return None
     # second type
     # max_window_height = driver.execute_script('return Math.max('
@@ -50,12 +52,15 @@ def clear_folder(path):
             elif os.path.isdir(file_path):
                 shutil.rmtree(file_path)
         except Exception as e:
-            print(f'Failed to delete {file_path}. Reason: {e}')
+            # print(f'Failed to delete {file_path}. Reason: {e}')
+            logging.error(f'Failed to clean {file_path}. Reason: {e}')
+            return None
+    logging.info(f'{path} cleared')
 
 
 def download_docs(driver: webdriver, # selenuim webdriver
                     destination_path: str = '', # string of path where the dir 'documents' will be created for documents
-                    extensions: list = ['.pdf', '.doc', '.xls', '.jpg'],
+                    extensions: list = ['.pdf', '.doc', '.xls', '.jpg', '.ppt'],
                     root_url: str = '', # in case of relative pathes
                     cookies: str = None
                     ): # optional extensions to look for
@@ -70,7 +75,8 @@ def download_docs(driver: webdriver, # selenuim webdriver
     for extension in extensions:
         try:
             documents = driver.find_elements_by_xpath("//a[contains(@href, '{}')]".format(extension))
-            print('{} DOCUMENTS FOUND ON PAGE: {}'.format(extension, len(documents)))
+            # print('{} DOCUMENTS FOUND ON PAGE: {}'.format(extension, len(documents)))
+            logging.info('{} documents found on page: {}'.format(extension, len(documents)))
             for document in documents:
                 document_url = document.get_attribute('href')
 
@@ -107,7 +113,8 @@ def download_docs(driver: webdriver, # selenuim webdriver
                     with open(path, 'wb') as handler:
                         handler.write(data)
                 except Exception as e:
-                    print(f'>>> {e} happened, document {document_name} skipped <<<')
+                    # print(f'>>> {e} happened, document {document_name} skipped <<<')
+                    logging.warning(f"Can't download {document_url} , {e} happend")
                     continue
 
                 print(f'>>> Document {document_name}{extension} downloaded <<<')
@@ -116,6 +123,11 @@ def download_docs(driver: webdriver, # selenuim webdriver
 
 
 def main():
+    logging.basicConfig(filename='main.log', 
+                        level=logging.DEBUG, 
+                        format='%(asctime)s : %(levelname)s : %(message)s',
+                        datefmt=r'%m/%d/%Y %H:%M:%S')
+    logging.info('Started')
     startline = 3 # base = 3
     forbidden = ['<', '>', ':', '"', '\\', '|', '?', '*', ';', '/']
 
@@ -167,7 +179,8 @@ def main():
         school_name = ''.join([i for i in school_name.value.strip() if i not in forbidden])
         school_name = '{}_{}_{}'.format(str(inn), school_url_for_name, school_name)
         school_url = url_pretty(school_url.value.strip())
-        print(f'\n\n>>>>> {county}  ---  {school_url} <<<<<')
+        # print(f'\n\n>>>>> {county}  ---  {school_url} <<<<<')
+        logging.info(f'{county} - {school_url} is processing')
 
 
         ### checking and creating the paths for school
@@ -183,32 +196,39 @@ def main():
         if len(os.listdir(school_path)) == 0:
             pass
         elif len(os.listdir(school_path)) <= options.min_docs_for_reload:
-            print(f'\n======= Folder is filled less then required, reloading: {county} - {school_name} ========\n')
+            # print(f'\n======= Folder is filled less then required, reloading: {county} - {school_name} ========\n')
+            logging.warning(f'{county} - {school_name} folder is filled less then required, reloading...')
             clear_folder(school_path)
         elif options.reload_on_empty_docs:
             if os.path.exists(os.path.join(school_path, 'documents')):
                 if os.listdir(os.path.join(school_path, 'documents')) == []:
-                    print(f'\n======= Lack of documents, reloading: {county} - {school_name} ========\n')
+                    # print(f'\n======= Lack of documents, reloading: {county} - {school_name} ========\n')
+                    logging.warning(f'{county} - {school_name} lack of documents, reloading...')
                     clear_folder(school_path)
                 else:
+                    logging.info(f'{county} - {school_url} is skipped, due to conditions')
                     continue
             else:
-                print(f'\n======= Lack of documents folder, reloading: {county} - {school_name} ========\n')
+                # print(f'\n======= Lack of documents folder, reloading: {county} - {school_name} ========\n')
+                logging.warning(f'{county} - {school_name} lack of documents folder, reloading...')
                 clear_folder(school_path)
         else:
+            logging.info(f'{county} : {school_url} is skipped, due to conditions')
             continue
         
         # working with the school
         try: # just in case of 404 or some random connection bullshit like RKN
             driver.get(school_url)
         except Exception as e:
-            print(f"!!!!! Couldn't reach {school_url} , {e} happened, skipping")
+            # print(f"!!!!! Couldn't reach {school_url} , {e} happened, skipping")
+            logging.warning(f'{school_url} is unreachable due to: {e} , skipping')
             continue
 
         try: # in case of Внимание, перейти ли в раздел домашнего обучения?
             annoying_shit = driver.find_element_by_xpath('//button[text()="Нет, позже"]')
             annoying_shit.click()
-            print('Banner with remote education closed.')
+            # print('Banner with remote education closed.')
+            logging.info('Banner with remote education closed.')
             time.sleep(2)
         except:
             pass
@@ -219,16 +239,19 @@ def main():
             school_details_page = driver.find_element_by_partial_link_text('Сведения об')
             # school_details_page = driver.find_element_by_xpath("//*[contains(translate(., 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ', 'абвгдеёжзийклмнопрстуфхцчшщъыьэюя'), 'сведения об')]")
             school_details_page.click()
-            print('Переход на Севедения об организации')
+            # print('Переход на Севедения об организации')
+            logging.info('Переход на Севедения об организации...')
             take_screenshot(driver, f'{school_path}/сведения об организации.jpg', ratio=3)
         except:
             try:
                 school_details_page = driver.find_element_by_partial_link_text('СВЕДЕНИЯ ОБ')
                 school_details_page.click()
-                print('Переход на Севедения об организации')
+                # print('Переход на Севедения об организации')
+                logging.info('Переход на СВЕДЕНИЯ ОБ ОРГАНИЗАЦИИ. Заглавные буквы в наименованиях')
                 take_screenshot(driver, f'{school_path}/сведения об организации.jpg', ratio=3)
             except:
-                print('Кликнуть на "Сведения об" не получилось.')
+                # print('Кликнуть на "Сведения об" не получилось.')
+                logging.warning('Перейти на "Сведения об организации" не получилось, чтож, попробуем без этого')
 
         finally:
             cats_urls = {}
@@ -236,20 +259,27 @@ def main():
                 try:
                     link = driver.find_element_by_partial_link_text(sub_category).get_attribute('href')
                     cats_urls[sub_category] = link
+                    logging.info(f'найдена категория {sub_category}')
                 except Exception as e:
-                    print(e)
+                    pass
+                    # print(e)
+                    # logging.wa
 
         for sub_category, sub_url in cats_urls.items():
             try: # trying to push the button of the current category
                 driver.get(sub_url)
-                print(f'Переход на {sub_category}')
+                # print(f'Переход на {sub_category}')
+                logging.info(f'переход на категорию {sub_category}')
                 time.sleep(2)
                 take_screenshot(driver, f'{school_path}/{sub_category}.jpg', ratio=3)
                 download_docs(driver, school_path, root_url=school_url) # downloading all the documents out of the current page
             except Exception as e: 
-                print(f'{e} occured, cant go to {sub_category}')
+                # print(f'{e} occured, cant go to {sub_category}')
+                logging.warning(f'не удалось перейти на {sub_category} , случилось {e}')
             
             time.sleep(2)
+        
+        logging.info(f'{county} - {school_url} done processing')
 
     driver.quit()
 
