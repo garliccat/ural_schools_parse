@@ -236,8 +236,12 @@ def main():
                 try:
                     link = driver.find_element_by_partial_link_text(sub_category).get_attribute('href')
                     cats_urls[sub_category] = link
-                except Exception as e:
-                    print(e)
+                except:
+                    try:
+                        link = driver.find_element_by_xpath(f"//*[contains (text(), '{sub_category}')]").find_element_by_xpath('..').get_attribute('href')
+                        cats_urls[sub_category] = link
+                    except Exception as e:
+                        print(e)
 
         for sub_category, sub_url in cats_urls.items():
             try: # trying to push the button of the current category
