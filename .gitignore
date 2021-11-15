@@ -1,7 +1,10 @@
 counties/
+counties*/
+книга*/
 venv/
 output/
 ~$*
-geckodriver.log
+geckodriver.*
+chromedriver.*
 *.xlsx
 __pycache__/

@@ -212,12 +212,17 @@ def main():
             time.sleep(2)
         except:
             pass
+        try: # in case of Пользовательское соглашение
+            annoying_shit = driver.find_element_by_xpath('//button[text()="Подтверждаю"]')
+            annoying_shit.click()
+            print('Banner with Terms of Use closed.')
+        except:
+            pass    
 
         take_screenshot(driver, f'{school_path}/main_page.jpg', ratio=3) # screenshot of the main page
 
         try: # жмём на Сведения об образовательной организации
             school_details_page = driver.find_element_by_partial_link_text('Сведения об')
-            # school_details_page = driver.find_element_by_xpath("//*[contains(translate(., 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ', 'абвгдеёжзийклмнопрстуфхцчшщъыьэюя'), 'сведения об')]")
             school_details_page.click()
             print('Переход на Севедения об организации')
             take_screenshot(driver, f'{school_path}/сведения об организации.jpg', ratio=3)
@@ -228,21 +233,47 @@ def main():
                 print('Переход на Севедения об организации')
                 take_screenshot(driver, f'{school_path}/сведения об организации.jpg', ratio=3)
             except:
-                print('Кликнуть на "Сведения об" не получилось.')
+                try:
+                    # school_details_page = driver.find_element_by_xpath("//*[contains (text(), 'Сведения об')]")
+                    school_details_pages = driver.find_elements_by_xpath("//*[contains(translate(., 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ', \
+                                                                        'абвгдеёжзийклмнопрстуфхцчшщъыьэюя'), 'сведения об')]")
+                    for school_details_page in school_details_pages:
+                        if school_details_page.get_attribute('href') is not None:
+                            school_details_page_url = school_details_page.get_attribute('href')
+                    driver.get(school_details_page_url)
+                    print('Переход на Севедения об организации')
+                except Exception as e:
+                    print('Кликнуть на "Сведения об" не получилось.')
+        
 
         finally:
             cats_urls = {}
             for sub_category in sub_categories:
+                elements = []
                 try:
-                    link = driver.find_element_by_partial_link_text(sub_category).get_attribute('href')
-                    cats_urls[sub_category] = link
-                except:
-                    try:
-                        link = driver.find_element_by_xpath(f"//*[contains (text(), '{sub_category}')]").find_element_by_xpath('..').get_attribute('href')
-                        cats_urls[sub_category] = link
-                    except Exception as e:
-                        print(e)
+                    links = driver.find_elements_by_partial_link_text(sub_category)
+                    elements = elements + links
+                except Exception as e1:
+                    pass
+                try:
+                    links = driver.find_elements_by_xpath(f"//*[contains (text(), '{sub_category}')]")
+                    elements = elements + links
+                except Exception as e2:
+                    pass
+                try:
+                    links = driver.find_elements_by_xpath(f"//*[contains (text(), '{sub_category}')]").find_element_by_xpath('..').get_attribute('href')
+                    elements = elements + links
+                except Exception as e3:
+                    pass
 
+                for element in elements:
+                    link = element.get_attribute('href')
+                    if link is not None:
+                        cats_urls[sub_category] = link
+
+            print(f'>>>>> {cats_urls.keys()} categories found <<<<<<')
+
+        
         for sub_category, sub_url in cats_urls.items():
             try: # trying to push the button of the current category
                 driver.get(sub_url)
